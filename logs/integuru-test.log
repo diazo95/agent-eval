@@ -1,0 +1,116 @@
+
+### STEP: poetry run pytest
+### CMD: timeout 900 poetry run pytest
+### START: 2026-07-24T21:14:45Z
+The "poetry.dev-dependencies" section is deprecated and will be removed in a future version. Use "poetry.group.dev.dependencies" instead.
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.5.0
+rootdir: /home/user/agent-eval/candidates/integuru
+configfile: pyproject.toml
+plugins: anyio-4.8.0, langsmith-0.7.30
+collected 3 items
+
+tests/test_integration_agent.py FFF                                      [100%]
+
+=================================== FAILURES ===================================
+___________ TestIntegrationAgent.test_dynamic_part_identifying_agent ___________
+
+self = <test_integration_agent.TestIntegrationAgent testMethod=test_dynamic_part_identifying_agent>
+
+    def setUp(self):
+        self.prompt = "Test prompt"
+        self.har_file_path = "test.har"
+        self.cookie_path = "test_cookies.json"
+>       self.agent = IntegrationAgent(self.prompt, self.har_file_path, self.cookie_path)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_integration_agent.py:12: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+integuru/agent.py:30: in __init__
+    self.req_to_res_map: Dict[Request, str] = parse_har_file(har_file_path)
+                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+har_file_path = 'test.har'
+
+    def parse_har_file(har_file_path: str) -> Dict[Request, Dict[str, str]]:
+        """
+        Parses the HAR file and returns a dictionary mapping Request objects to response dictionaries.
+        """
+        req_res_dict = {}
+    
+>       with open(har_file_path, 'r', encoding='utf-8') as file:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'test.har'
+
+integuru/util/har_processing.py:98: FileNotFoundError
+_______________ TestIntegrationAgent.test_end_url_identify_agent _______________
+
+self = <test_integration_agent.TestIntegrationAgent testMethod=test_end_url_identify_agent>
+
+    def setUp(self):
+        self.prompt = "Test prompt"
+        self.har_file_path = "test.har"
+        self.cookie_path = "test_cookies.json"
+>       self.agent = IntegrationAgent(self.prompt, self.har_file_path, self.cookie_path)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_integration_agent.py:12: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+integuru/agent.py:30: in __init__
+    self.req_to_res_map: Dict[Request, str] = parse_har_file(har_file_path)
+                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+har_file_path = 'test.har'
+
+    def parse_har_file(har_file_path: str) -> Dict[Request, Dict[str, str]]:
+        """
+        Parses the HAR file and returns a dictionary mapping Request objects to response dictionaries.
+        """
+        req_res_dict = {}
+    
+>       with open(har_file_path, 'r', encoding='utf-8') as file:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'test.har'
+
+integuru/util/har_processing.py:98: FileNotFoundError
+_________ TestIntegrationAgent.test_input_variables_identifying_agent __________
+
+self = <test_integration_agent.TestIntegrationAgent testMethod=test_input_variables_identifying_agent>
+
+    def setUp(self):
+        self.prompt = "Test prompt"
+        self.har_file_path = "test.har"
+        self.cookie_path = "test_cookies.json"
+>       self.agent = IntegrationAgent(self.prompt, self.har_file_path, self.cookie_path)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_integration_agent.py:12: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+integuru/agent.py:30: in __init__
+    self.req_to_res_map: Dict[Request, str] = parse_har_file(har_file_path)
+                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+har_file_path = 'test.har'
+
+    def parse_har_file(har_file_path: str) -> Dict[Request, Dict[str, str]]:
+        """
+        Parses the HAR file and returns a dictionary mapping Request objects to response dictionaries.
+        """
+        req_res_dict = {}
+    
+>       with open(har_file_path, 'r', encoding='utf-8') as file:
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: 'test.har'
+
+integuru/util/har_processing.py:98: FileNotFoundError
+=========================== short test summary info ============================
+FAILED tests/test_integration_agent.py::TestIntegrationAgent::test_dynamic_part_identifying_agent
+FAILED tests/test_integration_agent.py::TestIntegrationAgent::test_end_url_identify_agent
+FAILED tests/test_integration_agent.py::TestIntegrationAgent::test_input_variables_identifying_agent
+============================== 3 failed in 2.59s ===============================
+### EXIT: 1
+### ELAPSED_SEC: 6
+### TIMEOUT_CAP_SEC: 900

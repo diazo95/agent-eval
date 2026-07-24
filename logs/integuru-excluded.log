@@ -1,0 +1,19 @@
+
+### STEP: list test files
+### CMD: find . -path ./.venv -prune -o -name test_*.py -print -o -name *_test.py -print
+### START: 2026-07-24T21:14:51Z
+./tests/test_integration_agent.py
+### EXIT: 0
+### ELAPSED_SEC: 0
+
+### STEP: collect all tests
+### CMD: poetry run pytest --collect-only -q
+### START: 2026-07-24T21:14:51Z
+The "poetry.dev-dependencies" section is deprecated and will be removed in a future version. Use "poetry.group.dev.dependencies" instead.
+tests/test_integration_agent.py::TestIntegrationAgent::test_dynamic_part_identifying_agent
+tests/test_integration_agent.py::TestIntegrationAgent::test_end_url_identify_agent
+tests/test_integration_agent.py::TestIntegrationAgent::test_input_variables_identifying_agent
+
+3 tests collected in 1.11s
+### EXIT: 0
+### ELAPSED_SEC: 4

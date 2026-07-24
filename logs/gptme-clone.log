@@ -1,0 +1,7 @@
+=== git clone https://github.com/gptme/gptme candidates/gptme ===
+Cloning into 'candidates/gptme'...
+=== exit: 0 ===
+=== HEAD ===
+38a311d14cba6eaedd7ad3f3d9e177d358a25a22
+master
+38a311d14cba6eaedd7ad3f3d9e177d358a25a22 2026-07-24 20:23:07 +0200 fix(tui): update tool format on /model switch, pretty-render tool-format calls (#3347)
