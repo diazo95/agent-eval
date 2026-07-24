@@ -1,0 +1,60 @@
+=== Diagnosis: 10 failures in tests/test_util_gh_mocked.py ===
+SHA: 38a311d14cba6eaedd7ad3f3d9e177d358a25a22
+
+--- A) isolated run, single process, no xdist, no --timeout ---
+$ poetry run pytest tests/test_util_gh_mocked.py
+
+tests/test_util_gh_mocked.py:729: AssertionError
+---------------------------- Captured stdout setup -----------------------------
+           Using model: local/test                                              
+=========================== short test summary info ============================
+FAILED tests/test_util_gh_mocked.py::test_code_context_extraction - assert No...
+FAILED tests/test_util_gh_mocked.py::test_code_suggestion_extraction - assert...
+FAILED tests/test_util_gh_mocked.py::test_both_context_and_suggestion - asser...
+FAILED tests/test_util_gh_mocked.py::test_multiple_suggestions - assert None ...
+FAILED tests/test_util_gh_mocked.py::test_no_context_or_suggestion - assert N...
+FAILED tests/test_util_gh_mocked.py::test_empty_diff_hunk - assert None is no...
+FAILED tests/test_util_gh_mocked.py::test_file_extension_extraction - assert ...
+FAILED tests/test_util_gh_mocked.py::test_malformed_suggestion_block - assert...
+FAILED tests/test_util_gh_mocked.py::test_truncation_in_pr_content - assert N...
+FAILED tests/test_util_gh_mocked.py::test_suggestion_preserved_from_truncated_comment
+======================== 10 failed, 27 passed in 0.61s =========================
+
+--- B) is the gh CLI present on this machine? ---
+$ command -v gh
+gh NOT INSTALLED
+
+--- C) the guard clause in the function under test ---
+gptme/util/gh.py:669-673:
+def get_github_pr_content(url: str) -> str | None:
+    """Get GitHub PR content with comments and reviews using gh CLI."""
+    if not shutil.which("gh"):
+        logger.debug("gh CLI not available for GitHub PR handling")
+        return None
+
+--- D) which tests patch shutil.which (these are the ones that pass) ---
+746:    @patch("gptme.util.gh.shutil.which")
+754:    @patch("gptme.util.gh.shutil.which", return_value="/usr/bin/gh")
+780:    @patch("gptme.util.gh.shutil.which", return_value="/usr/bin/gh")
+793:    @patch("gptme.util.gh.shutil.which", return_value="/usr/bin/gh")
+810:    @patch("gptme.util.gh.shutil.which", return_value="/usr/bin/gh")
+826:    @patch("gptme.util.gh.shutil.which", return_value="/usr/bin/gh")
+842:    @patch("gptme.util.gh.shutil.which", return_value="/usr/bin/gh")
+857:    @patch("gptme.util.gh.shutil.which", return_value=None)
+865:    @patch("gptme.util.gh.shutil.which", return_value="/usr/bin/gh")
+879:    @patch("gptme.util.gh.shutil.which", return_value="/usr/bin/gh")
+895:    @patch("gptme.util.gh.shutil.which", return_value="/usr/bin/gh")
+911:    @patch("gptme.util.gh.shutil.which", return_value="/usr/bin/gh")
+
+--- E) same file, with a stub 'gh' placed on PATH (scratchpad only) ---
+$ PATH=<stub>:$PATH poetry run pytest tests/test_util_gh_mocked.py
+collected 37 items
+
+tests/test_util_gh_mocked.py .....................................       [100%]
+
+============================== 37 passed in 0.39s ==============================
+
+CONCLUSION: environmental (missing gh CLI), not a defect at this SHA.
+The 10 failing tests mock subprocess.run but do not patch
+gptme.util.gh.shutil.which, so get_github_pr_content returns None at the
+guard clause before any mock is reached. With gh present: 37/37 pass.

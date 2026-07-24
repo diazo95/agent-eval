@@ -179,3 +179,218 @@ Recorded in [`logs/env.txt`](logs/env.txt). Relevant facts:
 - Marker/`--collect-only` counts were gathered **after** the graded run and did not
   affect it. For gptme these were collected without the Makefile's `${SRCDIRS}`
   argument, so 8507 is the config-default scope; the graded run selected 8456 of them.
+
+---
+
+# Re-run — gptme @ `38a311d14cba6eaedd7ad3f3d9e177d358a25a22`
+
+Requested: re-run the gptme evaluation on hardware meeting two stated
+requirements, pinned to the same SHA for comparability.
+
+## Verdict
+
+**Is `make test` green on adequate hardware? — NOT ESTABLISHED.**
+
+The re-run did not happen. Both stated environment requirements are unavailable in
+this session, and the instruction was to fix the machine, never the repo, and to stop
+if either is missing. Neither can be fixed from inside the session. No adjustment to
+worker count or timeouts was made, so the documented command is unchanged and no
+substitute figure is reported in place of the real one.
+
+## Precondition check (blocking) — `logs/rerun-preconditions.log`
+
+| Requirement | Required | Actual | Status |
+|---|---|---|---|
+| CPU cores | ≥ 16 | **4** | ❌ FAIL |
+| Unrestricted outbound HTTPS | yes | `openaipublic.blob.core.windows.net` blocked | ❌ FAIL |
+| Live API key (needed for step 3) | yes | none set | ❌ FAIL |
+
+**1. CPU — 4 cores, 16 required.** `nproc`, `getconf _NPROCESSORS_ONLN` and
+`/proc/cpuinfo` all report 4; `lscpu` shows `Core(s) per socket: 4`, `Socket(s): 1` on
+an Intel Xeon @ 2.80GHz. There is no cgroup CPU quota to raise (`cpu.max` absent) —
+the container has 4 physical cores. Core count is fixed when the remote environment is
+created and cannot be changed from within a session.
+
+**2. Outbound HTTPS — blocked by egress policy.** The exact host tiktoken needs still
+returns 403 at CONNECT:
+
+```
+$ curl https://openaipublic.blob.core.windows.net/encodings/o200k_base.tiktoken
+curl: (56) CONNECT tunnel failed, response 403
+```
+
+The proxy's own status endpoint records the reason:
+
+```json
+"recentRelayFailures": [{
+  "kind": "connect_rejected",
+  "detail": "gateway answered 403 to CONNECT (policy denial or upstream failure)",
+  "host": "openaipublic.blob.core.windows.net:443"
+}]
+```
+
+`"selective": false` — this is the organization's egress policy for the session, not a
+per-tool scope. `/root/.ccr/README.md` is explicit that this is not mine to work
+around: *"The destination host is not allowed by your organization's egress policy for
+this session. Do not retry or route around it — report the blocked host."* Changing it
+requires a different network policy on the environment
+([docs](https://code.claude.com/docs/en/claude-code-on-the-web)).
+
+**3. No API key (blocks step 3 independently).** `ANTHROPIC_API_KEY`,
+`OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`,
+`XAI_API_KEY`, `GROQ_API_KEY` are all unset.
+
+## Step 1 — `make test`: NOT RUN
+
+Blocked on requirements 1 and 2. No total/passed/failed/skipped, wall-clock, or
+`git status` verification is reported, because producing them on 4 cores with blocked
+egress would reproduce the previous invalid run rather than replace it.
+
+## Step 3 — `requires_api` end-to-end tests: NOT RUN
+
+Blocked on requirement 3. `make test-api` runs `pytest -m "requires_api"`, and
+`tests/conftest.py::pytest_collection_modifyitems` skips all 10 with *"No API key
+configured"* when no key is present. **No API cost was incurred: $0.00** — no request
+was issued to any provider. The per-test pass/fail table and a real cost figure both
+require a funded key.
+
+## Step 2 — diagnosis of the 10 `test_util_gh_mocked.py` failures ✅ DONE
+
+This did not depend on either failed precondition, so it was completed.
+Log: `logs/rerun-gh-mocked-diagnosis.log`.
+
+**Result: environmental. Not a genuine defect at this SHA.**
+
+Evidence, in order:
+
+1. **Not the core-count problem.** Run alone — single process, no xdist, no
+   `--timeout` — the same 10 fail in 2.36s while the other 27 in the file pass:
+   `10 failed, 27 passed in 2.36s`. Oversubscription is ruled out.
+
+2. **The guard clause.** `gptme/util/gh.py:669-673`:
+
+   ```python
+   def get_github_pr_content(url: str) -> str | None:
+       """Get GitHub PR content with comments and reviews using gh CLI."""
+       if not shutil.which("gh"):
+           logger.debug("gh CLI not available for GitHub PR handling")
+           return None
+   ```
+
+3. **`gh` is not installed on this machine** (`command -v gh` → not found).
+
+4. **The failing tests patch `subprocess.run` but not `shutil.which`.** The 27 passing
+   tests in the same file patch it explicitly — e.g.
+   `@patch("gptme.util.gh.shutil.which", return_value="/usr/bin/gh")` at lines 754,
+   780, 793, 810, 826, 842, 865, and `test_no_gh_cli` deliberately patches it to
+   `None`. The 10 failures therefore return `None` at the guard clause **before
+   reaching any mock**, and `assert result is not None` fails.
+
+5. **Proof.** With a stub `gh` placed on `PATH` (scratchpad only — no repo file
+   touched, nothing installed): **`37 passed in 0.39s`**, all 10 green.
+
+So these 10 are a host-dependency assumption in the test file — despite the name
+`test_util_gh_mocked.py`, they require the real `gh` binary to exist on `PATH` — not a
+runtime bug in `get_github_pr_content`. Nothing was fixed.
+
+This also revises the previous run's failure accounting: of 31 failures, **10 are the
+missing `gh` CLI**, 5 are the blocked tiktoken host, and 12 are `-n 16` timeouts on 4
+cores. That leaves 4 (`test_subagent_unit.py` ×2, `test_reduce.py`, `test_agent.py`)
+whose cause is still not isolated.
+
+## Step 4 — eval workflows ✅ DONE
+
+Pure file reading; independent of the failed preconditions.
+
+### `.github/workflows/eval.yml` — "Evals"
+
+**Trigger.** Nightly cron plus manual dispatch:
+
+```yaml
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Run daily at 2 AM UTC
+  workflow_dispatch:
+```
+
+**Can it fail a build? No — it never touches a build.** It has no `pull_request`
+trigger, so it is not attached to PRs and cannot block a merge. The job itself can go
+red as a scheduled run (there is no `continue-on-error`), but nothing gates on it. It
+writes results to a separate branch, explicitly marked to not re-trigger CI:
+
+```yaml
+git commit -m "chore: add eval results for run ${{ github.run_number }} [skip ci]" || echo "No changes to commit"
+git push origin eval-results
+```
+
+**When is it skipped?** Never conditionally — the job carries no `if:`, and no step is
+guarded. It runs on every scheduled tick regardless of key availability. If keys are
+absent the evals simply run badly rather than being skipped; the only tolerance built
+in is the `|| echo "No changes to commit"` on the results commit.
+
+### `.github/workflows/eval-ci.yml` — "Eval Quality Gate"
+
+**Trigger.** PRs to `master`, but only when agent-relevant paths change:
+
+```yaml
+on:
+  pull_request:
+    branches: [ master ]
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'gptme/tools/**'
+      - 'gptme/models/**'
+      - 'gptme/eval/**'
+      - 'gptme/prompts/**'
+      - 'gptme/message*.py'
+      - 'gptme/llm/**'
+      - 'gptme/chat.py'
+      - 'gptme/codeblock.py'
+      - 'gptme/session.py'
+```
+
+**Can it fail a build? No.** Despite being named a "Quality Gate", it is explicitly
+non-blocking:
+
+```yaml
+    # Non-blocking in Phase 1 — informational only
+    continue-on-error: true
+```
+
+Every PR comment it can post — pass, fail, skipped, or could-not-run — ends with the
+same line: `*Informational only — does not block merge*`.
+
+**When is it skipped?** Four distinct ways:
+
+1. **Path filter** — a PR touching none of the paths above never triggers it.
+2. **Draft PRs** — `if: ${{ !github.event.pull_request.draft }}`, commented
+   `# Skip draft PRs to save API cost`.
+3. **Fork PRs / no secret** — the first step checks the key and short-circuits
+   everything downstream:
+
+   ```yaml
+   if [ -z "$ANTHROPIC_API_KEY" ]; then
+     echo "available=false" >> "$GITHUB_OUTPUT"
+     echo "Fork PRs do not have access to ANTHROPIC_API_KEY — skipping eval."
+   ```
+
+   Every subsequent step is gated on `if: steps.check_key.outputs.available == 'true'`,
+   and it comments *"Eval Quality Gate — skipped (fork PR)"*.
+4. **Self-neutralising on API trouble** — if all tests fail in under 5s average it
+   assumes auth/quota rather than real failures and reports skipped:
+
+   ```python
+   fast_fail = passed_count == 0 and total_count > 0 and avg_duration < 5.0
+   ```
+
+**What it runs when it does run:** 5 evals (`hello prime100 fix-bug hello-patch
+init-git`) on `anthropic/claude-haiku-4-5@tool` with `--timeout 60 --parallel 5`,
+annotated in the workflow as `# 5 basic tests with Haiku — fast and cheap
+(~$0.03-0.08/run)`.
+
+## What would unblock this
+
+A remote environment with ≥16 cores, an egress policy permitting
+`openaipublic.blob.core.windows.net`, and a funded `ANTHROPIC_API_KEY` in the session
+environment. With those, steps 1 and 3 run unchanged — the harness and pinned SHA are
+already committed here.

@@ -1,0 +1,59 @@
+=== Re-run precondition check 2026-07-24T22:01:19Z ===
+
+--- REQUIREMENT 1: >= 16 CPU cores ---
+nproc: 4
+getconf _NPROCESSORS_ONLN: 4
+/proc/cpuinfo processors: 4
+CPU(s):                                  4
+Model name:                              Intel(R) Xeon(R) Processor @ 2.80GHz
+Core(s) per socket:                      4
+Socket(s):                               1
+cgroup cpu.max: n/a (no quota to raise)
+RESULT: 4 cores available, 16 required -> FAIL
+
+--- REQUIREMENT 2: unrestricted outbound HTTPS ---
+$ curl https://openaipublic.blob.core.windows.net/encodings/o200k_base.tiktoken
+curl: (56) CONNECT tunnel failed, response 403
+HTTP 000
+
+proxy status ($HTTPS_PROXY/__agentproxy/status):
+{
+  "enabled": true,
+  "port": 34549,
+  "caBundlePath": "/root/.ccr/ca-bundle.crt",
+  "hasSystemCa": true,
+  "noProxy": "localhost,127.0.0.1,::1,127.0.0.0/8,0.0.0.0/8,::,169.254.0.0/16,anthropic.com,.anthropic.com,*.anthropic.com,registry.npmjs.org,jsr.io,npm.jsr.io,pypi.org,files.pythonhosted.org,index.crates.io,proxy.golang.org,host.docker.internal,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,100.64.0.0/10,.svc.cluster.local,*.svc.cluster.local",
+  "selective": false,
+  "standalone": false,
+  "toolScoped": false,
+  "javaTrustStorePath": "/root/.ccr/java-truststore.p12",
+  "readmePath": "/root/.ccr/README.md",
+  "gitConfigInjection": true,
+  "gitSshRewrite": true,
+  "recentRelayFailures": [
+    {
+      "ts": "2026-07-24T21:58:56.382Z",
+      "kind": "connect_rejected",
+      "detail": "gateway answered 403 to CONNECT (policy denial or upstream failure)",
+      "host": "openaipublic.blob.core.windows.net:443"
+    },
+    {
+      "ts": "2026-07-24T22:01:19.377Z",
+      "kind": "connect_rejected",
+      "detail": "gateway answered 403 to CONNECT (policy denial or upstream failure)",
+      "host": "openaipublic.blob.core.windows.net:443"
+    }
+  ]
+}
+
+RESULT: host blocked by egress policy (403 at CONNECT), selective=false -> FAIL
+
+--- ADDITIONAL: live API key for step 3 (make test-api) ---
+ANTHROPIC_API_KEY: unset
+OPENAI_API_KEY: unset
+OPENROUTER_API_KEY: unset
+DEEPSEEK_API_KEY: unset
+GEMINI_API_KEY: unset
+XAI_API_KEY: unset
+GROQ_API_KEY: unset
+RESULT: no provider key configured -> step 3 cannot run, no cost figure obtainable
